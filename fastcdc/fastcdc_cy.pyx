@@ -5,24 +5,24 @@ from libc.math cimport log2, lround
 from io import BytesIO
 
 
-def fastcdc_cy(data, min_size=None, avg_size=8192, max_size=None, fat=False, hf=None):
-    if min_size is None:
-        min_size = avg_size // 4
-    if max_size is None:
-        max_size = avg_size * 8
-
-    assert MINIMUM_MIN <= min_size <= MINIMUM_MAX
-    assert AVERAGE_MIN <= avg_size <= AVERAGE_MAX
-    assert MAXIMUM_MIN <= max_size <= MAXIMUM_MAX
-
-    # Ensure we have a readable stream
-    if isinstance(data, str):
-        stream = open(data, "rb")
-    elif not hasattr(data, "read"):
-        stream = BytesIO(data)
-    else:
-        stream = data
-    return chunk_generator(stream, min_size, avg_size, max_size, fat, hf)
+# def fastcdc_cy(data, min_size=None, avg_size=8192, max_size=None, fat=False, hf=None):
+#     if min_size is None:
+#         min_size = avg_size // 4
+#     if max_size is None:
+#         max_size = avg_size * 8
+#
+#     assert MINIMUM_MIN <= min_size <= MINIMUM_MAX
+#     assert AVERAGE_MIN <= avg_size <= AVERAGE_MAX
+#     assert MAXIMUM_MIN <= max_size <= MAXIMUM_MAX
+#
+#     # Ensure we have a readable stream
+#     if isinstance(data, str):
+#         stream = open(data, "rb")
+#     elif not hasattr(data, "read"):
+#         stream = BytesIO(data)
+#     else:
+#         stream = data
+#     return chunk_generator(stream, min_size, avg_size, max_size, fat, hf)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

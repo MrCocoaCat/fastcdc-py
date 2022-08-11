@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from io import BytesIO
 from math import log2
-
+from get_info import get_qemu_info
+import time
 
 def fastcdc_py(data, min_size=None, avg_size=8192, max_size=None, fat=False, hf=None):
     if min_size is None:
+        # 2048
         min_size = avg_size // 4
     if max_size is None:
+        # 65536
         max_size = avg_size * 8
 
     assert MINIMUM_MIN <= min_size <= MINIMUM_MAX
@@ -24,7 +27,10 @@ def fastcdc_py(data, min_size=None, avg_size=8192, max_size=None, fat=False, hf=
 
 
 def chunk_generator(stream, min_size, avg_size, max_size, fat, hf):
-    cs = center_size(avg_size, min_size, max_size)
+    """
+    stream
+    """
+    cs = center_size(avg_size, min_size, max_size) #
     bits = logarithm2(avg_size)
     mask_s = mask(bits + 1)
     mask_l = mask(bits - 1)
@@ -34,7 +40,9 @@ def chunk_generator(stream, min_size, avg_size, max_size, fat, hf):
     offset = 0
     while blob:
         if len(blob) <= max_size:
-            blob = memoryview(bytes(blob) + stream.read(read_size))
+            temp = bytes(blob)
+            blob = memoryview(bytes(blob) + stream.read(read_size))  # di xun huan
+        # cp
         cp = cdc_offset(blob, min_size, avg_size, max_size, cs, mask_s, mask_l)
         raw = bytes(blob[:cp]) if fat else b""
         h = hf(blob[:cp]).hexdigest() if hf else ""
@@ -43,18 +51,128 @@ def chunk_generator(stream, min_size, avg_size, max_size, fat, hf):
         blob = blob[cp:]
 
 
+def fastcdc_qcow2_py(path, min_size=None, avg_size=8192, max_size=None, fat=False, hf=None):
+    print("*************************** fastcdc_qcow2_py ***************************")
+    if min_size is None:
+        min_size = avg_size // 4
+    if max_size is None:
+        max_size = avg_size * 8
+    assert MINIMUM_MIN <= min_size <= MINIMUM_MAX
+    assert AVERAGE_MIN <= avg_size <= AVERAGE_MAX
+    assert MAXIMUM_MIN <= max_size <= MAXIMUM_MAX
+    # Ensure we have a readable stream
+    if isinstance(path, str):
+        stream = open(path, "rb")
+    elif not hasattr(path, "read"):
+        stream = BytesIO(path)
+    else:
+        stream = path
+    qcow2_map_offset = get_qemu_info(path)
+    print(qcow2_map_offset)
+    return chunk_generator_qcow2(stream, min_size, avg_size, max_size, fat, hf,
+                                 qcow2_map_offset)
+
+
+def chunk_generator_qcow2(stream, min_size, avg_size, max_size, fat, hf, qcow2_list):
+    # cs中位数
+    cs = center_size(avg_size, min_size, max_size)
+    bits = logarithm2(avg_size)
+    mask_s = mask(bits + 1)
+    mask_l = mask(bits - 1)
+
+    cs_b = center_size(avg_size*2, min_size*2, max_size*2)
+    bits_b = logarithm2(avg_size*2)
+    min_size_b = min_size * 2
+    avg_size_b= avg_size * 2
+    max_size_b= avg_size* 2
+    mask_s_b = mask(bits + 1)
+    mask_l_b = mask(bits - 1)
+    read_size = max(1024 * 64, max_size)
+    offset = 0
+    print(qcow2_list[-1])
+    for j, i in enumerate(qcow2_list):
+        print(i, len(qcow2_list))
+        start = i[0]
+        end = i[1]
+        length = end - start
+        temp = stream.read(length)
+        blob = memoryview(temp)  # di xun huan
+        print("stream.tell():", stream.tell())
+        if stream.tell() != i[1]:
+            print("not same ")
+        size = 0
+        while blob:
+            if i[2] is False:
+                cp = cdc_offset(blob, min_size_b, avg_size_b, max_size_b, cs_b, mask_s_b, mask_l_b)
+            else:
+                cp = cdc_offset(blob, min_size, avg_size, max_size, cs, mask_s, mask_l)
+            raw = bytes(blob[:cp]) if fat else b""
+            h = hf(blob[:cp]).hexdigest() if hf else ""
+            yield Chunk(offset, cp, raw, h)
+            offset += cp
+            # 截取cp 之后的数据
+            blob = blob[cp:]
+            print(len(blob))
+            size = cp + size
+        print("last : offset {A}".format(A=offset))
+        print(j, i)
+        time.sleep(0.5)
+        if offset != i[1]:
+            print("not same")
+
+# def a:
+#     if i[2] is False:
+#         #
+#         cp = i['length']
+#         blob = memoryview(bytes(blob) + stream.read(cp - read_size))
+#         raw = bytes(blob[:cp]) if fat else b""
+#         yield Chunk(offset, length=cp, data=raw, hash='0')
+#         offset += cp
+#         blob = blob[cp:]
+#     else:
+#         p = i['start'] + i['length']
+#         while 1:
+#             if blob == 0 or len(blob) <= max_size:
+#                 temp = bytes(blob)
+#                 if offset + read_size > p:
+#                     this_read_size = p - offset
+#                 else:
+#                     this_read_size = read_size
+#                 blob = memoryview(bytes(blob) + stream.read(this_read_size))
+#             # cp 切片大小
+#             cp = cdc_offset(blob, min_size, avg_size, max_size, cs, mask_s, mask_l)
+#             raw = bytes(blob[:cp]) if fat else b""
+#             hash = hf(blob[:cp]).hexdigest() if hf else ""
+#             yield Chunk(offset=offset, length=cp, data=raw, hash=hash)
+#             offset += cp
+#             blob = blob[cp:]
+#             if offset >= p:
+#                 break
+
 def cdc_offset(data, mi, av, ma, cs, mask_s, mask_l):
+    """
+    data 文件句柄
+    mi 最小切割文件大小
+    ma 最大切割文件大小
+    return :切割位置
+    ?为什么要区分  mask_s, mask_l
+    """
+    #  文件
     pattern = 0
     i = mi
     size = len(data)
-    barrier = min(cs, size)
+    barrier = min(cs, size)  # 取文件大小，与中位数大小的小值
     while i < barrier:
+        #print(pattern >> 1)
+        #print(data[i], GEAR[data[i]])
         pattern = (pattern >> 1) + GEAR[data[i]]
+        #print(pattern >> 1)
         if not pattern & mask_s:
             return i + 1
         i += 1
     barrier = min(ma, size)
     while i < barrier:
+        #
         pattern = (pattern >> 1) + GEAR[data[i]]
         if not pattern & mask_l:
             return i + 1
