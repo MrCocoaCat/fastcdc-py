@@ -49,7 +49,6 @@ def supported_hashes() -> List[str]:
     supported = list(hashlib.algorithms_guaranteed)
     try:
         import xxhash
-
         supported.extend(["xxh32", "xxh64"])
         hashlib.xxh32 = xxhash.xxh32
         hashlib.xxh64 = xxhash.xxh64
@@ -57,7 +56,6 @@ def supported_hashes() -> List[str]:
         pass
     try:
         import blake3
-
         supported.append("blake3")
         hashlib.blake3 = blake3.blake3
     except ImportError:
