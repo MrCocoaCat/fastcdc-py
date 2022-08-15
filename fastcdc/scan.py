@@ -37,7 +37,9 @@ from fastcdc.utils import DefaultHelp, iter_files, supported_hashes
 
 def scan(paths, recursive, size, min_size, max_size, hash_function):
     """Scan files in directories and report duplication."""
-
+    # flag == 1  ，fastCDC
+    # flag == 0 , fastCDC_QOCW2
+    flag = 1
     # 设定最大块，最小块的值
     if min_size is None:
         min_size = size // 4
@@ -58,69 +60,70 @@ def scan(paths, recursive, size, min_size, max_size, hash_function):
     for path in paths:
         files += list(iter_files(path, recursive))
     t = Timer("scan", logger=None)
-    t.start()
-    with click.progressbar(files) as pgbar:
-        for entry in pgbar:
-            try:
-                chunker = fastcdc.fastcdc(entry.path, min_size, size, max_size, hf=hf)
-            except Exception as e:
-                click.echo("\n for {}".format(entry.path))
-                click.echo(repr(e))
-                continue
-            for chunk in chunker:
-                #print(chunk)
-                bytes_total += chunk.length
-                if chunk.hash in fingerprints:
-                    bytes_dupe += chunk.length
-                fingerprints.add(chunk.hash)
-    t.stop()
-    if bytes_total:
-        data_per_s = bytes_total / Timer.timers.mean("scan")
-        dd_ratio = bytes_dupe / bytes_total * 100
-        click.echo("Files:          {}".format(intcomma(len(files))))
-        click.echo(
-            "Chunk Sizes:    min {} - avg {} - max {}".format(min_size, size, max_size)
-        )
-        click.echo("Unique Chunks:  {}".format(intcomma(len(fingerprints))))
-        click.echo("Total Data:     {}".format(naturalsize(bytes_total)))
-        click.echo("Dupe Data:      {}".format(naturalsize(bytes_dupe)))
-        click.echo("DeDupe Ratio:   {:.2f} %".format(dd_ratio))
-        click.echo("Throughput:     {}/s".format(naturalsize(data_per_s)))
+    if flag:
+        t.start()
+        with click.progressbar(files) as pgbar:
+            for entry in pgbar:
+                try:
+                    chunker = fastcdc.fastcdc(entry.path, min_size, size, max_size, hf=hf)
+                except Exception as e:
+                    click.echo("\n for {}".format(entry.path))
+                    click.echo(repr(e))
+                    continue
+                for chunk in chunker:
+                    #print(chunk)
+                    bytes_total += chunk.length
+                    if chunk.hash in fingerprints:
+                        bytes_dupe += chunk.length
+                    fingerprints.add(chunk.hash)
+        t.stop()
+        if bytes_total:
+            data_per_s = bytes_total / Timer.timers.mean("scan")
+            dd_ratio = bytes_dupe / bytes_total * 100
+            click.echo("Files:          {}".format(intcomma(len(files))))
+            click.echo(
+                "Chunk Sizes:    min {} - avg {} - max {}".format(min_size, size, max_size)
+            )
+            click.echo("Unique Chunks:  {}".format(intcomma(len(fingerprints))))
+            click.echo("Total Data:     {}".format(naturalsize(bytes_total)))
+            click.echo("Dupe Data:      {}".format(naturalsize(bytes_dupe)))
+            click.echo("DeDupe Ratio:   {:.2f} %".format(dd_ratio))
+            click.echo("Throughput:     {}/s".format(naturalsize(data_per_s)))
+        else:
+            click.echo("No data.")
     else:
-        click.echo("No data.")
-
-    print("*********************qcow2****************************")
-    t.start()
-    with click.progressbar(files) as pgbar:
-        for entry in pgbar:
-            try:
-                chunker = fastcdc.fastcdc_qcow2_py(entry.path, min_size, size, max_size,
-                                                   hf=hf)
-            except Exception as e:
-                click.echo("\n for {}".format(entry.path))
-                click.echo(repr(e))
-                continue
-            for chunk in chunker:
-                print(chunk)
-                bytes_total += chunk.length
-                if chunk.hash in fingerprints:
-                    bytes_dupe += chunk.length
-                fingerprints.add(chunk.hash)
-    t.stop()
-    if bytes_total:
-        data_per_s = bytes_total / Timer.timers.mean("scan")
-        dd_ratio = bytes_dupe / bytes_total * 100
-        click.echo("Files:          {}".format(intcomma(len(files))))
-        click.echo(
-            "Chunk Sizes:    min {} - avg {} - max {}".format(min_size, size, max_size)
-        )
-        click.echo("qcow2 Unique Chunks:  {}".format(intcomma(len(fingerprints))))
-        click.echo("qcow2 Total Data:     {}".format(naturalsize(bytes_total)))
-        click.echo("qcow2 Dupe Data:      {}".format(naturalsize(bytes_dupe)))
-        click.echo("qcow2 DeDupe Ratio:   {:.2f} %".format(dd_ratio))
-        click.echo("qcow2 Throughput:     {}/s".format(naturalsize(data_per_s)))
-    else:
-        click.echo("No data.")
+        print("*********************qcow2****************************")
+        t.start()
+        with click.progressbar(files) as pgbar:
+            for entry in pgbar:
+                try:
+                    chunker = fastcdc.fastcdc_qcow2_py(entry.path, min_size, size, max_size,
+                                                       hf=hf)
+                except Exception as e:
+                    click.echo("\n for {}".format(entry.path))
+                    click.echo(repr(e))
+                    continue
+                for chunk in chunker:
+                    print(chunk)
+                    bytes_total += chunk.length
+                    if chunk.hash in fingerprints:
+                        bytes_dupe += chunk.length
+                    fingerprints.add(chunk.hash)
+        t.stop()
+        if bytes_total:
+            data_per_s = bytes_total / Timer.timers.mean("scan")
+            dd_ratio = bytes_dupe / bytes_total * 100
+            click.echo("Files:          {}".format(intcomma(len(files))))
+            click.echo(
+                "Chunk Sizes:    min {} - avg {} - max {}".format(min_size, size, max_size)
+            )
+            click.echo("qcow2 Unique Chunks:  {}".format(intcomma(len(fingerprints))))
+            click.echo("qcow2 Total Data:     {}".format(naturalsize(bytes_total)))
+            click.echo("qcow2 Dupe Data:      {}".format(naturalsize(bytes_dupe)))
+            click.echo("qcow2 DeDupe Ratio:   {:.2f} %".format(dd_ratio))
+            click.echo("qcow2 Throughput:     {}/s".format(naturalsize(data_per_s)))
+        else:
+            click.echo("No data.")
 
 
 if __name__ == "__main__":

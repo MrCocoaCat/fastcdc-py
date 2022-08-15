@@ -32,6 +32,7 @@ def chunk_generator(stream, min_size, avg_size, max_size, fat, hf):
     """
     cs = center_size(avg_size, min_size, max_size) #
     bits = logarithm2(avg_size)
+    #
     mask_s = mask(bits + 1)
     mask_l = mask(bits - 1)
 
@@ -149,6 +150,7 @@ def chunk_generator_qcow2(stream, min_size, avg_size, max_size, fat, hf, qcow2_l
 #             if offset >= p:
 #                 break
 
+
 def cdc_offset(data, mi, av, ma, cs, mask_s, mask_l):
     """
     data 文件句柄
@@ -163,10 +165,10 @@ def cdc_offset(data, mi, av, ma, cs, mask_s, mask_l):
     size = len(data)
     barrier = min(cs, size)  # 取文件大小，与中位数大小的小值
     while i < barrier:
-        #print(pattern >> 1)
-        #print(data[i], GEAR[data[i]])
+        # print(pattern >> 1)
+        # print(data[i], GEAR[data[i]])
         pattern = (pattern >> 1) + GEAR[data[i]]
-        #print(pattern >> 1)
+        # print(pattern >> 1)
         if not pattern & mask_s:
             return i + 1
         i += 1
