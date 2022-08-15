@@ -34,12 +34,15 @@ from fastcdc.utils import DefaultHelp, iter_files, supported_hashes
     "-hf", "--hash-function", type=click.STRING, default="sha256", show_default=True
 )
 
+@click.option(
+    "-f", "--flag", type=click.INT,  default=1, help="qcow2 or no type"
+)
 
-def scan(paths, recursive, size, min_size, max_size, hash_function):
+def scan(paths, recursive, size, min_size, max_size, hash_function, flag):
     """Scan files in directories and report duplication."""
     # flag == 1  ，fastCDC
     # flag == 0 , fastCDC_QOCW2
-    flag = 1
+
     # 设定最大块，最小块的值
     if min_size is None:
         min_size = size // 4
